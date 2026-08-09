@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -18,13 +17,13 @@ func main() {
 
 	r.GET("/weather", func(c *gin.Context) {
 		_ = godotenv.Load()
-		location := url.PathEscape(c.Query("city"))
-		if location == "" {
+		city := c.Query("city")
+		if city == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "City parameter is required"})
 			return
 		}
 		apiKey := os.Getenv("VISUAL_CROSSING_KEY")
-		reqURL := fmt.Sprintf("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/%s?key=%s", location, apiKey)
+		reqURL := fmt.Sprintf("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/%s?key=%s", city, apiKey)
 
 		resp, err := http.Get(reqURL)
 		if err != nil {
