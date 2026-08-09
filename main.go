@@ -1,27 +1,43 @@
 package main
 
 import (
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	_ = godotenv.Load()
+
 	r := gin.Default()
 
 	r.GET("/weather", func(c *gin.Context) {
-		city := c.Query("city")
-		if city == "" {
+		_ = godotenv.Load()
+		location := url.PathEscape(c.Query("city"))
+		if location == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "City parameter is required"})
 			return
 		}
+		apiKey := os.Getenv("VISUAL_CROSSING_KEY")
+		reqURL := fmt.Sprintf("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/%s?key=%s", location, apiKey)
 
-		// 第一步先返回 Mock 数据，验证 HTTP 通路
-		c.JSON(http.StatusOK, gin.H{
-			"city":        city,
-			"temperature": "28°C",
-			"status":      "Mock Data (Server OK)",
-		})
+		resp, err := http.Get(reqURL)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reach weather service"})
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			c.JSON(resp.StatusCode, gin.H{"error": "Invalid city or third-party API error"})
+			return
+		}
+		body, _ := io.ReadAll(resp.Body)
+		c.Data(http.StatusOK, "application/json", body)
 	})
 	r.Run()
 }
